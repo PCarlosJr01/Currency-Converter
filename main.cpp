@@ -9,6 +9,21 @@ bool isValidCurrency(const std::string& currency)
               [](unsigned char c) {return std::isalpha(c); });
 }
 
+double getMockExchangeRate(const std::string& fromCurrency, const std::string& toCurrency) {
+    if (fromCurrency == toCurrency) return 1.0;
+
+    if (fromCurrency == "USD" && toCurrency == "EUR") return 0.92;
+    if (fromCurrency == "EUR" && toCurrency == "USD") return 1.09;
+
+    if (fromCurrency == "USD" && toCurrency == "MXN") return 17.10;
+    if (fromCurrency == "MXN" && toCurrency == "USD") return 0.058;
+
+    if (fromCurrency == "USD" && toCurrency == "GBP") return 0.79;
+    if (fromCurrency == "GBP" && toCurrency == "USD") return 1.27;
+
+    return -1.0; // unsupported
+}
+
 
 int main() 
 {
@@ -43,10 +58,20 @@ if (!isValidCurrency(fromCurrency) || !isValidCurrency(toCurrency))
     return 1; 
 }
 
-std::cout << "\nConversion Request:\n";
-std::cout << "Amount: " << amount << std::endl;
-std::cout << "From Currency: " << fromCurrency << std::endl;
-std::cout << "To Currency: " << toCurrency << std::endl;
+double rate = getMockExchangeRate(fromCurrency, toCurrency);
+
+if (rate < 0) {
+    std::cout << "Error: Unsupported currency conversion." << std::endl;
+    return 1;
+}
+
+double result = amount * rate;
+
+std::cout << "\nConversion Result:\n";
+std::cout << amount << " " << fromCurrency << " = "
+          << result << " " << toCurrency << std::endl;
+
+return 0;
 
 return 0;
 }
