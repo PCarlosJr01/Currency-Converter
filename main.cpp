@@ -5,7 +5,8 @@
 bool isValidCurrency(const std::string& currency) 
 {
     return currency.length() == 3 &&
-              std::all_of(currency.begin(), currency.end(), ::isalpha;
+              std::all_of(currency.begin(), currency.end(), 
+              [](unsigned char c) {return std::isalpha(c); });
 }
 
 
@@ -46,4 +47,6 @@ std::cout << "\nConversion Request:\n";
 std::cout << "Amount: " << amount << std::endl;
 std::cout << "From Currency: " << fromCurrency << std::endl;
 std::cout << "To Currency: " << toCurrency << std::endl;
+
+return 0;
 }
