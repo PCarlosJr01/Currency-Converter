@@ -1,0 +1,6 @@
+# Build artifacts
+build/
+*.exe
+
+# Cache files
+exchange_rates_cache.txt
