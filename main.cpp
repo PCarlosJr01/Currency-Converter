@@ -30,19 +30,37 @@ bool isCacheValid(const std::string& filePath)
     return cacheAge <= oneHour;
 }
 
-double getMockExchangeRate(const std::string& fromCurrency, const std::string& toCurrency) {
-    if (fromCurrency == toCurrency) return 1.0;
+double getCachedExchangeRate(
+    const std::string& filePath,
+    const std::string& fromCurrency,
+    const std::string& toCurrency
+)
+{
+    if (fromCurrency == toCurrency)
+    {
+        return 1.0;
+    }
 
-    if (fromCurrency == "USD" && toCurrency == "EUR") return 0.92;
-    if (fromCurrency == "EUR" && toCurrency == "USD") return 1.09;
+    std::ifstream cacheFile(filePath);
 
-    if (fromCurrency == "USD" && toCurrency == "MXN") return 17.10;
-    if (fromCurrency == "MXN" && toCurrency == "USD") return 0.058;
+    if (!cacheFile)
+    {
+        return -1.0;
+    }
 
-    if (fromCurrency == "USD" && toCurrency == "GBP") return 0.79;
-    if (fromCurrency == "GBP" && toCurrency == "USD") return 1.27;
+    std::string cachedFromCurrency;
+    std::string cachedToCurrency;
+    double cachedRate = 0.0;
 
-    return -1.0; // unsupported
+    while (cacheFile >> cachedFromCurrency >> cachedToCurrency >> cachedRate)
+    {
+        if (cachedFromCurrency == fromCurrency && cachedToCurrency == toCurrency)
+        {
+            return cachedRate;
+        }
+    }
+
+    return -1.0;
 }
 
 int main() 
@@ -61,7 +79,7 @@ int main()
         std::cout << "Exchange rate cache missing or expired.\n";
         std::cout << "Live API fetching will be added in a future version.\n";
 
-        // Create mock cache file (temporary for v0.5.0)
+        // Create mock cache file 
         std::ofstream cacheFile(cacheFilePath);
 
         if (cacheFile)
@@ -103,11 +121,11 @@ int main()
         return 1;
     }
 
-    double rate = getMockExchangeRate(fromCurrency, toCurrency);
+    double rate = getCachedExchangeRate(cacheFilePath, fromCurrency, toCurrency);
 
     if (rate < 0)
     {
-        std::cout << "Error: Unsupported currency conversion." << std::endl;
+        std::cout << "Error: Currency conversion not available." << std::endl;
         return 1;
     }
 
