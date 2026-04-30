@@ -1,12 +1,33 @@
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <fstream>
+#include <chrono>
+#include <filesystem>
 
 bool isValidCurrency(const std::string& currency) 
 {
     return currency.length() == 3 &&
               std::all_of(currency.begin(), currency.end(), 
               [](unsigned char c) {return std::isalpha(c); });
+}
+
+bool isCacheValid(const std::string& filePath)
+{
+    namespace fs = std::filesystem;
+
+    if (!fs::exists(filePath))
+    {
+        return false;
+    }
+
+    auto lastWriteTime = fs::last_write_time(filePath);
+    auto now = fs::file_time_type::clock::now();
+
+    auto cacheAge = now - lastWriteTime;
+    auto oneHour = std::chrono::hours(1);
+
+    return cacheAge <= oneHour;
 }
 
 double getMockExchangeRate(const std::string& fromCurrency, const std::string& toCurrency) {
@@ -24,54 +45,77 @@ double getMockExchangeRate(const std::string& fromCurrency, const std::string& t
     return -1.0; // unsupported
 }
 
-
 int main() 
 {
-double amount = 0.0;
-std::string fromCurrency, toCurrency;
+    double amount = 0.0;
+    std::string fromCurrency, toCurrency;
 
-std::cout << "--- Currency Converter ---" << std::endl;
+    const std::string cacheFilePath = "exchange_rates_cache.txt";
 
-std::cout << "Enter amount: ";
-std::cin >> amount;
+    if (isCacheValid(cacheFilePath))
+    {
+        std::cout << "Using cached exchange rate data.\n";
+    }
+    else
+    {
+        std::cout << "Exchange rate cache missing or expired.\n";
+        std::cout << "Live API fetching will be added in a future version.\n";
 
-if (amount <= 0 )
-{
-    std::cout << "Invalid amount. Please enter a positive number that is greater than 0." << std::endl;
-    return 1; 
-}
+        // Create mock cache file (temporary for v0.5.0)
+        std::ofstream cacheFile(cacheFilePath);
 
-std::cout << "Enter from currency (e.g., USD): ";
-std::cin >> fromCurrency;
+        if (cacheFile)
+        {
+            cacheFile << "USD EUR 0.92\n";
+            cacheFile << "EUR USD 1.09\n";
+            cacheFile << "USD MXN 17.10\n";
+            cacheFile << "MXN USD 0.058\n";
+            cacheFile << "USD GBP 0.79\n";
+            cacheFile << "GBP USD 1.27\n";
+        }
+    }
 
-std::cout << "Enter to currency (e.g., EUR): ";
-std::cin >> toCurrency;
+    std::cout << "--- Currency Converter ---" << std::endl;
 
-//Normalize uppercase
-std::transform(fromCurrency.begin(), fromCurrency.end(), fromCurrency.begin(), ::toupper);
-std::transform(toCurrency.begin(), toCurrency.end(), toCurrency.begin(), ::toupper);
+    std::cout << "Enter amount: ";
+    std::cin >> amount;
 
-//Validate currencies
-if (!isValidCurrency(fromCurrency) || !isValidCurrency(toCurrency)) 
-{
-    std::cout << "Invalid currency code. Please enter a valid 3-letter currency code." << std::endl;
-    return 1; 
-}
+    if (amount <= 0)
+    {
+        std::cout << "Invalid amount. Please enter a positive number greater than 0." << std::endl;
+        return 1;
+    }
 
-double rate = getMockExchangeRate(fromCurrency, toCurrency);
+    std::cout << "Enter from currency (e.g., USD): ";
+    std::cin >> fromCurrency;
 
-if (rate < 0) {
-    std::cout << "Error: Unsupported currency conversion." << std::endl;
-    return 1;
-}
+    std::cout << "Enter to currency (e.g., EUR): ";
+    std::cin >> toCurrency;
 
-double result = amount * rate;
+    // Normalize to uppercase
+    std::transform(fromCurrency.begin(), fromCurrency.end(), fromCurrency.begin(), ::toupper);
+    std::transform(toCurrency.begin(), toCurrency.end(), toCurrency.begin(), ::toupper);
 
-std::cout << "\nConversion Result:\n";
-std::cout << amount << " " << fromCurrency << " = "
-          << result << " " << toCurrency << std::endl;
+    // Validate currencies
+    if (!isValidCurrency(fromCurrency) || !isValidCurrency(toCurrency))
+    {
+        std::cout << "Invalid currency code. Please enter a valid 3-letter currency code." << std::endl;
+        return 1;
+    }
 
-return 0;
+    double rate = getMockExchangeRate(fromCurrency, toCurrency);
 
-return 0;
+    if (rate < 0)
+    {
+        std::cout << "Error: Unsupported currency conversion." << std::endl;
+        return 1;
+    }
+
+    double result = amount * rate;
+
+    std::cout << "\nConversion Result:\n";
+    std::cout << amount << " " << fromCurrency << " = "
+              << result << " " << toCurrency << std::endl;
+
+    return 0;
 }
