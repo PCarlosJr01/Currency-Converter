@@ -52,7 +52,7 @@ ApplicationWindow {
                     placeholderText: "Enter amount"
                     Layout.fillWidth: true
                     font.pixelSize: 18
-                    color: "#080a0c"
+                    color: "#07090a"
 
                     background: Rectangle {
                         radius: 12
