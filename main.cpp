@@ -13,6 +13,7 @@
 #include <QObject>
 #include <QString>
 #include <sstream>
+#include <QLocale>
 
 bool isValidCurrency(const std::string& currency) 
 {
@@ -197,12 +198,16 @@ public:
 
         double result = amount * rate;
 
-        std::ostringstream output;
-        output << std::fixed << std::setprecision(2);
-        output << amount << " " << from << " = " << result << " " << to;
-        output << "\nRate: 1 " << from << " = " << rate << " " << to;
+        QLocale locale;
 
-        return QString::fromStdString(output.str());
+        QString formattedAmount = locale.toString(amount, 'f', 2);
+        QString formattedResult = locale.toString(result, 'f', 2);
+        QString formattedRate = locale.toString(rate, 'f', 4);
+
+        return formattedAmount + " " + QString::fromStdString(from) + " = " +
+            formattedResult + " " + QString::fromStdString(to) +
+            "\nRate: 1 " + QString::fromStdString(from) + " = " +
+            formattedRate + " " + QString::fromStdString(to);
     }
 };
 
