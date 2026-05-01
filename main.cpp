@@ -63,6 +63,25 @@ bool fetchAndCacheRates(const std::string& filePath)
         return false;
     }
 
+    try
+    {
+        nlohmann::json exchangeData = nlohmann::json::parse(response);
+
+        if (!exchangeData.contains("result") || exchangeData["result"] != "success")
+        {
+            return false;
+        }
+
+        if (!exchangeData.contains("rates"))
+        {
+            return false;
+        }
+    }
+    catch (...)
+    {
+        return false;
+    }
+
     std::ofstream cacheFile(filePath);
 
     if (!cacheFile)
