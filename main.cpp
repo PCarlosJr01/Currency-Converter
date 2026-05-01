@@ -7,6 +7,12 @@
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <iomanip>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QObject>
+#include <QString>
+#include <sstream>
 
 bool isValidCurrency(const std::string& currency) 
 {
@@ -141,78 +147,81 @@ double getCachedExchangeRate(
     }
 }
 
-int main() 
+class CurrencyConverterBackend : public QObject
 {
-    double amount = 0.0;
-    std::string fromCurrency, toCurrency;
+    Q_OBJECT
 
-    const std::string cacheFilePath = "exchange_rates_cache.txt";
-
-    if (isCacheValid(cacheFilePath))
+public:
+    explicit CurrencyConverterBackend(QObject* parent = nullptr)
+        : QObject(parent)
     {
-        std::cout << "Using cached exchange rate data.\n";
     }
-    else
+
+    Q_INVOKABLE QString convert(double amount, const QString& fromCurrency, const QString& toCurrency)
     {
-        std::cout << "Cache is invalid or expired.\n";
+        const std::string cacheFilePath = "exchange_rates_cache.txt";
 
-        if(!fetchAndCacheRates(cacheFilePath))
+        if (amount <= 0)
         {
-            std::cout <<"Warning: Failed to fetch exchange rates. Using cached data if available.\n" << std::endl;
+            return "Invalid amount. Please enter a positive number.";
+        }
 
-            if(!std::filesystem::exists(cacheFilePath))
+        std::string from = fromCurrency.toStdString();
+        std::string to = toCurrency.toStdString();
+
+        std::transform(from.begin(), from.end(), from.begin(), ::toupper);
+        std::transform(to.begin(), to.end(), to.begin(), ::toupper);
+
+        if (!isValidCurrency(from) || !isValidCurrency(to))
+        {
+            return "Invalid currency code. Please enter a valid 3-letter currency code.";
+        }
+
+        if (!isCacheValid(cacheFilePath))
+        {
+            if (!fetchAndCacheRates(cacheFilePath))
             {
-                std::cout << "Error: No cached exchange rate data available. Exiting.\n";
-                return 1;
+                if (!std::filesystem::exists(cacheFilePath))
+                {
+                    return "Error: No cached exchange rate data available.";
+                }
             }
         }
-        std::cout << "Exchange rates updated and cached successfully.\n";
-   
+
+        double rate = getCachedExchangeRate(cacheFilePath, from, to);
+
+        if (rate < 0)
+        {
+            return QString::fromStdString("Error: Conversion rate not found for " + from + " -> " + to);
+        }
+
+        double result = amount * rate;
+
+        std::ostringstream output;
+        output << std::fixed << std::setprecision(2);
+        output << amount << " " << from << " = " << result << " " << to;
+        output << "\nRate: 1 " << from << " = " << rate << " " << to;
+
+        return QString::fromStdString(output.str());
     }
+};
 
-    std::cout << "\n=== Currency Converter ===\n";
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
 
-    std::cout << "Enter amount: ";
-    if (!(std::cin >> amount) || amount <= 0)
+    CurrencyConverterBackend backend;
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty("converterBackend", &backend);
+    engine.loadFromModule("CurrencyConverter", "Main");
+
+    if (engine.rootObjects().isEmpty())
     {
-    std::cout << "Invalid amount. Please enter a positive number.\n";
-    return 1;
-    }
-
-    std::cout << "Enter from currency (e.g., USD): ";
-    std::cin >> fromCurrency;
-
-    std::cout << "Enter to currency (e.g., EUR): ";
-    std::cin >> toCurrency;
-
-    std::transform(fromCurrency.begin(), fromCurrency.end(), fromCurrency.begin(), ::toupper);
-    std::transform(toCurrency.begin(), toCurrency.end(), toCurrency.begin(), ::toupper);
-
-    if (!isValidCurrency(fromCurrency) || !isValidCurrency(toCurrency))
-    {
-        std::cout << "Invalid currency code. Please enter a valid 3-letter currency code." << std::endl;
         return 1;
     }
 
-    double rate = getCachedExchangeRate(cacheFilePath, fromCurrency, toCurrency);
-
-    if (rate < 0)
-    {
-        std::cout << "Error: Conversion rate not found for "
-          << fromCurrency << " -> " << toCurrency << std::endl;        
-          return 1;
-    }
-
-    double result = amount * rate;
-
-    std::cout << std::fixed << std::setprecision(2);
-
-    std::cout << "\n--- Conversion Result ---\n";
-    std::cout << amount << " " << fromCurrency << " = "
-          << result << " " << toCurrency << std::endl;
-
-    std::cout << "Exchange Rate: 1 " << fromCurrency
-          << " = " << rate << " " << toCurrency << std::endl;
-
-    return 0;
+    return app.exec();
 }
+
+#include "main.moc"

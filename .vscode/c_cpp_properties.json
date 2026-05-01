@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "MinGW UCRT64",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/msys64/ucrt64/include",
+                "C:/msys64/ucrt64/include/Qt6",
+                "C:/msys64/ucrt64/include/Qt6/QtCore",
+                "C:/msys64/ucrt64/include/Qt6/QtGui",
+                "C:/msys64/ucrt64/include/Qt6/QtQml",
+                "C:/msys64/ucrt64/include/Qt6/QtQuick"
+            ],
+            "defines": [
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}
