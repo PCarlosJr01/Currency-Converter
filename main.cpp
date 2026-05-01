@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <iomanip>
 
 bool isValidCurrency(const std::string& currency) 
 {
@@ -138,22 +139,25 @@ int main()
 
         if(!fetchAndCacheRates(cacheFilePath))
         {
-            std::cout <<"Error: Failed to fetch exchange rates." << std::endl;
-            return 1;
+            std::cout <<"Warning: Failed to fetch exchange rates. Using cached data if available.\n" << std::endl;
+
+            if(!std::filesystem::exists(cacheFilePath))
+            {
+                std::cout << "Error: No cached exchange rate data available. Exiting.\n";
+                return 1;
+            }
         }
         std::cout << "Exchange rates updated and cached successfully.\n";
    
     }
 
-    std::cout << "--- Currency Converter ---" << std::endl;
+    std::cout << "\n=== Currency Converter ===\n";
 
     std::cout << "Enter amount: ";
-    std::cin >> amount;
-
-    if (amount <= 0)
+    if (!(std::cin >> amount) || amount <= 0)
     {
-        std::cout << "Invalid amount. Please enter a positive number greater than 0." << std::endl;
-        return 1;
+    std::cout << "Invalid amount. Please enter a positive number.\n";
+    return 1;
     }
 
     std::cout << "Enter from currency (e.g., USD): ";
@@ -175,15 +179,21 @@ int main()
 
     if (rate < 0)
     {
-        std::cout << "Error: Currency conversion not available." << std::endl;
-        return 1;
+        std::cout << "Error: Conversion rate not found for "
+          << fromCurrency << " -> " << toCurrency << std::endl;        
+          return 1;
     }
 
     double result = amount * rate;
 
-    std::cout << "\nConversion Result:\n";
+    std::cout << std::fixed << std::setprecision(2);
+
+    std::cout << "\n--- Conversion Result ---\n";
     std::cout << amount << " " << fromCurrency << " = "
-              << result << " " << toCurrency << std::endl;
+          << result << " " << toCurrency << std::endl;
+
+    std::cout << "Exchange Rate: 1 " << fromCurrency
+          << " = " << rate << " " << toCurrency << std::endl;
 
     return 0;
 }
