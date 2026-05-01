@@ -62,6 +62,8 @@ bool fetchAndCacheRates(const std::string& filePath)
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "ssl/certs/ca-bundle.crt");
+
     CURLcode result = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
