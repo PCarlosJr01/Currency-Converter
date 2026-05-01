@@ -4,6 +4,8 @@
 #include <fstream>
 #include <chrono>
 #include <filesystem>
+#include <curl/curl.h>
+#include <nlohmann/json.hpp>
 
 bool isValidCurrency(const std::string& currency) 
 {
@@ -30,6 +32,48 @@ bool isCacheValid(const std::string& filePath)
     return cacheAge <= oneHour;
 }
 
+size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* output)
+{
+    size_t totalSize = size * nmemb;
+    output->append(static_cast<char*>(contents), totalSize);
+    return totalSize;
+}
+
+bool fetchAndCacheRates(const std::string& filePath)
+{
+    CURL* curl = curl_easy_init();
+
+    if (!curl)
+    {
+        return false;
+    }
+
+    std::string response;
+
+    curl_easy_setopt(curl, CURLOPT_URL, "https://open.er-api.com/v6/latest/USD");
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    CURLcode result = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (result != CURLE_OK)
+    {
+        return false;
+    }
+
+    std::ofstream cacheFile(filePath);
+
+    if (!cacheFile)
+    {
+        return false;
+    }
+
+    cacheFile << response;
+
+    return true;
+}
+
 double getCachedExchangeRate(
     const std::string& filePath,
     const std::string& fromCurrency,
@@ -48,19 +92,33 @@ double getCachedExchangeRate(
         return -1.0;
     }
 
-    std::string cachedFromCurrency;
-    std::string cachedToCurrency;
-    double cachedRate = 0.0;
+    nlohmann::json exchangeData;
 
-    while (cacheFile >> cachedFromCurrency >> cachedToCurrency >> cachedRate)
+    try
     {
-        if (cachedFromCurrency == fromCurrency && cachedToCurrency == toCurrency)
-        {
-            return cachedRate;
-        }
-    }
+        cacheFile >> exchangeData;
 
-    return -1.0;
+        if (!exchangeData.contains("rates"))
+        {
+            return -1.0;
+        }
+
+        const auto& rates = exchangeData["rates"];
+
+        if (!rates.contains(fromCurrency) || !rates.contains(toCurrency))
+        {
+            return -1.0;
+        }
+
+        double fromRate = rates[fromCurrency];
+        double toRate = rates[toCurrency];
+
+        return toRate / fromRate;
+    }
+    catch (...)
+    {
+        return -1.0;
+    }
 }
 
 int main() 
@@ -76,21 +134,15 @@ int main()
     }
     else
     {
-        std::cout << "Exchange rate cache missing or expired.\n";
-        std::cout << "Live API fetching will be added in a future version.\n";
+        std::cout << "Cache is invalid or expired.\n";
 
-        // Create mock cache file 
-        std::ofstream cacheFile(cacheFilePath);
-
-        if (cacheFile)
+        if(!fetchAndCacheRates(cacheFilePath))
         {
-            cacheFile << "USD EUR 0.92\n";
-            cacheFile << "EUR USD 1.09\n";
-            cacheFile << "USD MXN 17.10\n";
-            cacheFile << "MXN USD 0.058\n";
-            cacheFile << "USD GBP 0.79\n";
-            cacheFile << "GBP USD 1.27\n";
+            std::cout <<"Error: Failed to fetch exchange rates." << std::endl;
+            return 1;
         }
+        std::cout << "Exchange rates updated and cached successfully.\n";
+   
     }
 
     std::cout << "--- Currency Converter ---" << std::endl;
@@ -110,11 +162,9 @@ int main()
     std::cout << "Enter to currency (e.g., EUR): ";
     std::cin >> toCurrency;
 
-    // Normalize to uppercase
     std::transform(fromCurrency.begin(), fromCurrency.end(), fromCurrency.begin(), ::toupper);
     std::transform(toCurrency.begin(), toCurrency.end(), toCurrency.begin(), ::toupper);
 
-    // Validate currencies
     if (!isValidCurrency(fromCurrency) || !isValidCurrency(toCurrency))
     {
         std::cout << "Invalid currency code. Please enter a valid 3-letter currency code." << std::endl;

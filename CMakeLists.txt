@@ -11,6 +11,6 @@ add_executable(converter main.cpp)
 find_package(CURL REQUIRED)
 target_link_libraries(converter PRIVATE CURL::libcurl)
 
-# nlohmann/json (header-only, no linking needed usually)
+# nlohmann/json 
 find_package(nlohmann_json REQUIRED)
 target_link_libraries(converter PRIVATE nlohmann_json::nlohmann_json)
